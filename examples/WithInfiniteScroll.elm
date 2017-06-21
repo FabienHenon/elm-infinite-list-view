@@ -114,7 +114,7 @@ config : IL.Config String Msg
 config =
     IL.config
         { itemView = itemView
-        , itemHeight = itemHeight
+        , itemHeight = IL.constantHeight itemHeight
         , containerHeight = containerHeight
         }
 

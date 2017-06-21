@@ -1,4 +1,4 @@
-module BasicExample exposing (main)
+module VariableItemHeight exposing (main)
 
 import InfiniteList as IL
 import Html exposing (Html, div, text)
@@ -48,9 +48,12 @@ update msg model =
             ( { model | infList = infList }, Cmd.none )
 
 
-itemHeight : Int
-itemHeight =
-    20
+itemHeight : Int -> String -> Int
+itemHeight idx item =
+    if (rem idx 2) == 0 then
+        20
+    else
+        40
 
 
 containerHeight : Int
@@ -62,7 +65,7 @@ config : IL.Config String Msg
 config =
     IL.config
         { itemView = itemView
-        , itemHeight = IL.constantHeight itemHeight
+        , itemHeight = IL.variableHeight itemHeight
         , containerHeight = containerHeight
         }
         |> IL.withOffset 300
@@ -72,7 +75,7 @@ itemView : Int -> Int -> String -> Html Msg
 itemView idx listIdx item =
     div
         [ style
-            [ ( "height", (toString itemHeight) ++ "px" ) ]
+            [ ( "height", (toString (itemHeight listIdx item)) ++ "px" ) ]
         ]
         [ text item ]
 

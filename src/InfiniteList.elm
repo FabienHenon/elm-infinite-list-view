@@ -2,6 +2,7 @@ module InfiniteList
     exposing
         ( Model
         , Config
+        , ItemHeight
         , init
         , config
         , withOffset
@@ -12,6 +13,8 @@ module InfiniteList
         , withStyles
         , withId
         , updateScroll
+        , constantHeight
+        , variableHeight
         )
 
 {-| Displays a virtual infinite list of items by only showing visible items on screen. This is very useful for
@@ -28,7 +31,7 @@ is computed using the `scrollTop` value from the scroll event.
 @docs init
 
 # Configuration
-@docs config
+@docs config, constantHeight, variableHeight
 
 # Scroll
 @docs onScroll
@@ -43,7 +46,7 @@ is computed using the `scrollTop` value from the scroll event.
 @docs updateScroll
 
 # Types
-@docs Model, Config
+@docs Model, Config, ItemHeight
 -}
 
 import Html exposing (Html, div)
@@ -67,7 +70,7 @@ type Config item msg
 
 
 type alias ConfigInternal item msg =
-    { itemHeight : Int
+    { itemHeight : ItemHeight item
     , itemView : Int -> Int -> item -> Html msg
     , containerHeight : Int
     , offset : Int
@@ -76,6 +79,13 @@ type alias ConfigInternal item msg =
     , styles : List ( String, String )
     , class : Maybe String
     }
+
+
+{-| Item height description
+-}
+type ItemHeight item
+    = Constant Int
+    | Variable (Int -> item -> Int)
 
 
 {-| Creates a new `Model`.
@@ -96,7 +106,7 @@ and you will be able to customize it more with `with...` functions
     config =
         InfiniteList.config
             { itemView = itemView
-            , itemHeight = 20
+            , itemHeight = InfiniteList.constantHeight 20
             , containerHeight = 300
             }
 
@@ -118,7 +128,7 @@ if you specified the exact container's height.
 -}
 config :
     { itemView : Int -> Int -> item -> Html msg
-    , itemHeight : Int
+    , itemHeight : ItemHeight item
     , containerHeight : Int
     }
     -> Config item msg
@@ -133,6 +143,46 @@ config conf =
         , class = Nothing
         , id = Nothing
         }
+
+
+{-| Specifies that the items' height will always be the same.
+This function needs the height of the items
+
+    config : InfiniteList.Config String msg
+    config =
+        InfiniteList.config
+            { itemView = itemView
+            , itemHeight = InfiniteList.constantHeight 20
+            , containerHeight = 300
+            }
+-}
+constantHeight : Int -> ItemHeight item
+constantHeight height =
+    Constant height
+
+
+{-| Specifies that the items' height will change according to the item.
+This function needs a function taking the index of the item in your list of items, and the current item.
+It must return the item's height
+
+    config : InfiniteList.Config String msg
+    config =
+        InfiniteList.config
+            { itemView = itemView
+            , itemHeight = InfiniteList.variableHeight getItemHeight
+            , containerHeight = 300
+            }
+
+    getItemHeight : Int -> String -> Int
+    getItemHeight idx item =
+        if (rem idx 2) == 0 then
+            20
+        else
+            40
+-}
+variableHeight : (Int -> item -> Int) -> ItemHeight item
+variableHeight getHeight =
+    Variable getHeight
 
 
 {-| Changes the default offset.
@@ -284,7 +334,7 @@ updateScroll value (Model model) =
     config =
         InfiniteList.config
             { itemView = itemView
-            , itemHeight = 20
+            , itemHeight = InfiniteList.constantHeight 20
             , containerHeight = 300
             }
 
@@ -307,22 +357,15 @@ updateScroll value (Model model) =
             [ InfiniteList.view config model.infiniteList list ]
 -}
 view : Config item msg -> Model -> List item -> Html msg
-view ((Config { offset, containerHeight, itemHeight, itemView, customContainer }) as config) (Model scrollTop) items =
+view ((Config { itemHeight, itemView, customContainer }) as config) (Model scrollTop) items =
     let
-        elementsCountToShow =
-            (offset * 2 + containerHeight) // itemHeight + 1
+        ( elementsCountToSkip, elementsToShow, topMargin, totalHeight ) =
+            case itemHeight of
+                Constant height ->
+                    computeElementsAndSizesForSimpleHeight config height scrollTop items
 
-        elementsCountToSkip =
-            max 0 ((scrollTop - offset) // itemHeight)
-
-        elementsToShow =
-            (List.drop elementsCountToSkip >> List.take elementsCountToShow) items
-
-        topMargin =
-            elementsCountToSkip * itemHeight
-
-        totalHeight =
-            (List.length items) * itemHeight
+                Variable function ->
+                    computeElementsAndSizesForMultipleHeights config function scrollTop items
     in
         div
             (attributes totalHeight config)
@@ -366,6 +409,56 @@ addAttribute f value attributes =
 
         Just v ->
             (f v) :: attributes
+
+
+
+-- Computations
+
+
+computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Int -> List item -> ( Int, List item, Int, Int )
+computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight }) itemHeight scrollTop items =
+    let
+        elementsCountToShow =
+            (offset * 2 + containerHeight) // itemHeight + 1
+
+        elementsCountToSkip =
+            max 0 ((scrollTop - offset) // itemHeight)
+
+        elementsToShow =
+            (List.drop elementsCountToSkip >> List.take elementsCountToShow) items
+
+        topMargin =
+            elementsCountToSkip * itemHeight
+
+        totalHeight =
+            (List.length items) * itemHeight
+    in
+        ( elementsCountToSkip, elementsToShow, topMargin, totalHeight )
+
+
+computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Int -> List item -> ( Int, List item, Int, Int )
+computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight }) getHeight scrollTop items =
+    let
+        updateComputations item ( idx, elementsCountToSkip, elementsToShow, topMargin, currHeight ) =
+            let
+                height =
+                    getHeight idx item
+
+                newCurrentHeight =
+                    currHeight + height
+            in
+                -- If still below limit, we skip it
+                if newCurrentHeight <= (scrollTop - offset) then
+                    ( idx + 1, elementsCountToSkip + 1, elementsToShow, topMargin + height, newCurrentHeight )
+                else if currHeight < (scrollTop + containerHeight + offset) then
+                    ( idx + 1, elementsCountToSkip, item :: elementsToShow, topMargin, newCurrentHeight )
+                else
+                    ( idx + 1, elementsCountToSkip, elementsToShow, topMargin, newCurrentHeight )
+
+        ( totalElementsCount, elementsCountToSkip, elementsToShow, topMargin, totalHeight ) =
+            List.foldl updateComputations ( 0, 0, [], 0, 0 ) items
+    in
+        ( elementsCountToSkip, List.reverse elementsToShow, topMargin, totalHeight )
 
 
 

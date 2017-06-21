@@ -53,7 +53,7 @@ config : InfiniteList.Config String Msg
 config =
     InfiniteList.config
         { itemView = itemView
-        , itemHeight = 20
+        , itemHeight = InfiniteList.constantHeight 20
         , containerHeight = 500
         }
         |> InfiniteList.withOffset 300

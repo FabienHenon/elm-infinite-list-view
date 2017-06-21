@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0",
+    "version": "2.0.0",
     "summary": "Displays a virtual infinite list, only showing visible items",
     "repository": "https://github.com/FabienHenon/elm-infinite-list-view.git",
     "license": "BSD3",
