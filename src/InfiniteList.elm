@@ -52,6 +52,7 @@ is computed using the `scrollTop` value from the scroll event.
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on)
+import Html.Lazy exposing (lazy3)
 import Json.Decode as JD
 
 
@@ -355,9 +356,15 @@ updateScroll value (Model model) =
             , InfiniteList.onScroll InfiniteListMsg
             ]
             [ InfiniteList.view config model.infiniteList list ]
+
 -}
 view : Config item msg -> Model -> List item -> Html msg
-view ((Config { itemHeight, itemView, customContainer }) as config) (Model scrollTop) items =
+view config model list =
+    lazy3 lazyView config model list
+
+
+lazyView : Config item msg -> Model -> List item -> Html msg
+lazyView ((Config { itemHeight, itemView, customContainer }) as config) (Model scrollTop) items =
     let
         ( elementsCountToSkip, elementsToShow, topMargin, totalHeight ) =
             case itemHeight of
@@ -376,7 +383,7 @@ view ((Config { itemHeight, itemView, customContainer }) as config) (Model scrol
                 , ( "top", (toString topMargin) ++ "px" )
                 , ( "position", "relative" )
                 ]
-                (List.indexedMap (\idx item -> itemView idx (elementsCountToSkip + idx) item) elementsToShow)
+                (List.indexedMap (\idx item -> lazy3 itemView idx (elementsCountToSkip + idx) item) elementsToShow)
             ]
 
 
