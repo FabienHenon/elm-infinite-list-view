@@ -467,52 +467,46 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight }) item
     { skipCount = elementsCountToSkip, elements = elementsToShow, topMargin = topMargin, totalHeight = totalHeight }
 
 
-type alias CalculatedTuple item =
-    { idx : Int
-    , elementsCountToSkip : Int
-    , elementsToShow : List item
-    , topMargin : Int
-    , currHeight : Int
-    }
-
-
 computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Int -> List item -> ElementAndSizes item
 computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight }) getHeight scrollTop items =
     let
         updateComputations item calculatedTuple =
             let
-                { idx, elementsCountToSkip, elementsToShow, topMargin, currHeight } =
+                { idx, elementsCountToSkip, elementsToShow, topMargin, currentHeight } =
                     calculatedTuple
 
                 height =
                     getHeight idx item
 
                 newCurrentHeight =
-                    currHeight + height
+                    currentHeight + height
             in
             -- If still below limit, we skip it
             if newCurrentHeight <= (scrollTop - offset) then
-                { calculatedTuple | idx = idx + 1, elementsCountToSkip = elementsCountToSkip + 1, topMargin = topMargin + height, currHeight = newCurrentHeight }
+                { calculatedTuple | idx = idx + 1, elementsCountToSkip = elementsCountToSkip + 1, topMargin = topMargin + height, currentHeight = newCurrentHeight }
 
-            else if currHeight < (scrollTop + containerHeight + offset) then
-                { calculatedTuple | idx = idx + 1, elementsToShow = item :: elementsToShow, currHeight = newCurrentHeight }
+            else if currentHeight < (scrollTop + containerHeight + offset) then
+                { calculatedTuple | idx = idx + 1, elementsToShow = item :: elementsToShow, currentHeight = newCurrentHeight }
 
             else
-                { calculatedTuple | idx = idx + 1, currHeight = newCurrentHeight }
+                { calculatedTuple | idx = idx + 1, currentHeight = newCurrentHeight }
 
         initialValue =
             { idx = 0
             , elementsCountToSkip = 0
             , elementsToShow = []
             , topMargin = 0
-            , currHeight = 0
+            , currentHeight = 0
             }
 
         computedValues =
-            -- ( totalElementsCount, elementsCountToSkip, elementsToShow, topMargin, totalHeight ) =
             List.foldl updateComputations initialValue items
     in
-    { skipCount = computedValues.elementsCountToSkip, elements = List.reverse computedValues.elementsToShow, topMargin = computedValues.topMargin, totalHeight = computedValues.currHeight }
+    { skipCount = computedValues.elementsCountToSkip
+    , elements = List.reverse computedValues.elementsToShow
+    , topMargin = computedValues.topMargin
+    , totalHeight = computedValues.currentHeight
+    }
 
 
 
