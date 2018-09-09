@@ -1,9 +1,10 @@
 module ManualOnScroll exposing (main)
 
-import InfiniteList as IL
+import Browser
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on)
+import InfiniteList as IL
 import Json.Decode as JD
 
 
@@ -17,33 +18,23 @@ type alias Model =
     }
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    Html.program
+    Browser.sandbox
         { init = init
         , view = view
         , update = update
-        , subscriptions = subscriptions
         }
 
 
-initModel : Model
-initModel =
+init : Model
+init =
     { infList = IL.init
-    , content = List.range 0 1000 |> List.map toString
+    , content = List.range 0 1000 |> List.map String.fromInt
     }
 
 
-init : ( Model, Cmd Msg )
-init =
-    let
-        model =
-            initModel
-    in
-        ( model, Cmd.none )
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> Model
 update msg model =
     case msg of
         OnScroll value ->
@@ -51,7 +42,7 @@ update msg model =
                 infList =
                     IL.updateScroll value model.infList
             in
-                ( { model | infList = infList }, Cmd.none )
+            { model | infList = infList }
 
 
 itemHeight : Int
@@ -77,8 +68,7 @@ config =
 itemView : Int -> Int -> String -> Html Msg
 itemView idx listIdx item =
     div
-        [ style
-            [ ( "height", (toString itemHeight) ++ "px" ) ]
+        [ style "height" (String.fromInt itemHeight ++ "px")
         ]
         [ text item ]
 
@@ -86,18 +76,11 @@ itemView idx listIdx item =
 view : Model -> Html Msg
 view model =
     div
-        [ style
-            [ ( "height", (toString containerHeight) ++ "px" )
-            , ( "width", "500px" )
-            , ( "overflow", "auto" )
-            , ( "border", "1px solid #000" )
-            , ( "margin", "auto" )
-            ]
+        [ style "height" (String.fromInt containerHeight ++ "px")
+        , style "width" "500px"
+        , style "overflow" "auto"
+        , style "border" "1px solid #000"
+        , style "margin" "auto"
         , on "scroll" (JD.map OnScroll JD.value)
         ]
         [ IL.view config model.infList model.content ]
-
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none

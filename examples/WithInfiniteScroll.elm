@@ -1,11 +1,12 @@
 module WithInfiniteScroll exposing (main)
 
-import InfiniteScroll as IS
-import InfiniteList as IL
+import Browser
 import Html exposing (Html, div, p, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on)
 import Http
+import InfiniteList as IL
+import InfiniteScroll as IS
 import Json.Decode as JD
 
 
@@ -22,9 +23,9 @@ type alias Model =
     }
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    Html.program
+    Browser.element
         { init = init
         , view = view
         , update = update
@@ -40,13 +41,13 @@ initModel =
     }
 
 
-init : ( Model, Cmd Msg )
-init =
+init : () -> ( Model, Cmd Msg )
+init _ =
     let
         model =
             initModel
     in
-        ( { model | infScroll = IS.startLoading model.infScroll }, loadContent )
+    ( { model | infScroll = IS.startLoading model.infScroll }, loadContent )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -57,14 +58,14 @@ update msg model =
                 ( infScroll, cmd ) =
                     IS.update InfiniteScrollMsg msg_ model.infScroll
             in
-                ( { model | infScroll = infScroll }, cmd )
+            ( { model | infScroll = infScroll }, cmd )
 
         OnDataRetrieved (Err _) ->
             let
                 infScroll =
                     IS.stopLoading model.infScroll
             in
-                ( { model | infScroll = infScroll }, Cmd.none )
+            ( { model | infScroll = infScroll }, Cmd.none )
 
         OnDataRetrieved (Ok result) ->
             let
@@ -74,14 +75,14 @@ update msg model =
                 infScroll =
                     IS.stopLoading model.infScroll
             in
-                ( { model | content = content, infScroll = infScroll }, Cmd.none )
+            ( { model | content = content, infScroll = infScroll }, Cmd.none )
 
         OnScroll value ->
             let
                 infList =
                     IL.updateScroll value model.infList
             in
-                ( { model | infList = infList }, IS.cmdFromScrollEvent InfiniteScrollMsg value )
+            ( { model | infList = infList }, IS.cmdFromScrollEvent InfiniteScrollMsg value )
 
 
 stringsDecoder : JD.Decoder (List String)
@@ -122,11 +123,9 @@ config =
 itemView : Int -> Int -> String -> Html Msg
 itemView idx listIdx item =
     p
-        [ style
-            [ ( "height", (toString itemHeight) ++ "px" )
-            , ( "overflow", "hidden" )
-            , ( "margin", "0" )
-            ]
+        [ style "height" (String.fromInt itemHeight ++ "px")
+        , style "overflow" "hidden"
+        , style "margin" "0"
         ]
         [ text item ]
 
@@ -134,30 +133,27 @@ itemView idx listIdx item =
 view : Model -> Html Msg
 view model =
     div
-        [ style
-            [ ( "height", "500px" )
-            , ( "width", "500px" )
-            , ( "overflow", "auto" )
-            , ( "border", "1px solid #000" )
-            , ( "margin", "auto" )
-            ]
+        [ style "height" "500px"
+        , style "width" "500px"
+        , style "overflow" "auto"
+        , style "border" "1px solid #000"
+        , style "margin" "auto"
         , on "scroll" (JD.map OnScroll JD.value)
         ]
-        ((IL.view config model.infList model.content) :: loader model)
+        (IL.view config model.infList model.content :: loader model)
 
 
 loader : Model -> List (Html Msg)
 loader { infScroll } =
     if IS.isLoading infScroll then
         [ div
-            [ style
-                [ ( "color", "red" )
-                , ( "font-weight", "bold" )
-                , ( "text-align", "center" )
-                ]
+            [ style "color" "red"
+            , style "font-weight" "bold"
+            , style "text-align" "center"
             ]
             [ text "Loading ..." ]
         ]
+
     else
         []
 
