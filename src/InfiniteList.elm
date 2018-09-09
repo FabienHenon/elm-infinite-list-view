@@ -374,7 +374,7 @@ view configValue model list =
     lazy3 lazyView configValue model list
 
 
-type alias ElementAndSizes item =
+type alias Calculation item =
     { skipCount : Int
     , elements : List item
     , topMargin : Int
@@ -446,7 +446,7 @@ addAttribute f value newAttributes =
 -- Computations
 
 
-computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Int -> List item -> ElementAndSizes item
+computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Int -> List item -> Calculation item
 computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight }) itemHeight scrollTop items =
     let
         elementsCountToShow =
@@ -467,7 +467,7 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight }) item
     { skipCount = elementsCountToSkip, elements = elementsToShow, topMargin = topMargin, totalHeight = totalHeight }
 
 
-computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Int -> List item -> ElementAndSizes item
+computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Int -> List item -> Calculation item
 computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight }) getHeight scrollTop items =
     let
         updateComputations item calculatedTuple =
