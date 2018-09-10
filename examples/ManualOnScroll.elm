@@ -59,7 +59,7 @@ config : IL.Config String Msg
 config =
     IL.config
         { itemView = itemView
-        , itemHeight = IL.constantHeight itemHeight
+        , itemHeight = IL.withConstantHeight itemHeight
         , containerHeight = containerHeight
         }
         |> IL.withOffset 300

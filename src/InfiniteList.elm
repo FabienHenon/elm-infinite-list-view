@@ -1,6 +1,6 @@
 module InfiniteList exposing
     ( init
-    , config, constantHeight, variableHeight
+    , config, withConstantHeight, withVariableHeight
     , onScroll
     , view
     , withOffset, withCustomContainer, withClass, withStyles, withId
@@ -26,7 +26,7 @@ is computed using the `scrollTop` value from the scroll event.
 
 # Configuration
 
-@docs config, constantHeight, variableHeight
+@docs config, withConstantHeight, withVariableHeight
 
 
 # Scroll
@@ -114,7 +114,7 @@ and you will be able to customize it more with `with...` functions
     config =
         InfiniteList.config
             { itemView = itemView
-            , itemHeight = InfiniteList.constantHeight 20
+            , itemHeight = InfiniteList.withConstantHeight 20
             , containerHeight = 300
             }
 
@@ -162,13 +162,13 @@ This function needs the height of the items
     config =
         InfiniteList.config
             { itemView = itemView
-            , itemHeight = InfiniteList.constantHeight 20
+            , itemHeight = InfiniteList.withConstantHeight 20
             , containerHeight = 300
             }
 
 -}
-constantHeight : Int -> ItemHeight item
-constantHeight height =
+withConstantHeight : Int -> ItemHeight item
+withConstantHeight height =
     Constant height
 
 
@@ -180,7 +180,7 @@ It must return the item's height
     config =
         InfiniteList.config
             { itemView = itemView
-            , itemHeight = InfiniteList.variableHeight getItemHeight
+            , itemHeight = InfiniteList.withVariableHeight getItemHeight
             , containerHeight = 300
             }
 
@@ -193,8 +193,8 @@ It must return the item's height
             40
 
 -}
-variableHeight : (Int -> item -> Int) -> ItemHeight item
-variableHeight getHeight =
+withVariableHeight : (Int -> item -> Int) -> ItemHeight item
+withVariableHeight getHeight =
     Variable getHeight
 
 
@@ -348,7 +348,7 @@ updateScroll value (Model model) =
     config =
         InfiniteList.config
             { itemView = itemView
-            , itemHeight = InfiniteList.constantHeight 20
+            , itemHeight = InfiniteList.withConstantHeight 20
             , containerHeight = 300
             }
 
