@@ -368,6 +368,7 @@ updateScroll value (Model model) =
             , style "overflow-y" "auto"
             , style "-webkit-overflow-scrolling" "touch"
             , InfiniteList.onScroll InfiniteListMsg
+            , id "myslist" -- set an HTML id if you want to use scrollToNthItem later
             ]
             [ InfiniteList.view config model.infiniteList list ]
 
@@ -386,15 +387,10 @@ type alias Calculation item =
 
 
 lazyView : Config item msg -> Model -> List item -> Html msg
-lazyView ((Config { itemHeight, itemView, customContainer }) as configValue) (Model scrollTop) items =
+lazyView ((Config { itemView, customContainer }) as configValue) (Model scrollTop) items =
     let
         { skipCount, elements, topMargin, totalHeight } =
-            case itemHeight of
-                Constant height ->
-                    computeElementsAndSizesForSimpleHeight configValue height scrollTop items
-
-                Variable function ->
-                    computeElementsAndSizesForMultipleHeights configValue function scrollTop items
+            computeElementsAndSizes configValue scrollTop items
 
         elementsCountToSkip =
             skipCount
@@ -415,21 +411,38 @@ lazyView ((Config { itemHeight, itemView, customContainer }) as configValue) (Mo
         ]
 
 
+computeElementsAndSizes : Config item msg -> Int -> List item -> Calculation item
+computeElementsAndSizes ((Config { itemHeight, itemView, customContainer }) as configValue) scrollTop items =
+    case itemHeight of
+        Constant height ->
+            computeElementsAndSizesForSimpleHeight configValue height scrollTop items
+
+        Variable function ->
+            computeElementsAndSizesForMultipleHeights configValue function scrollTop items
+
+
 {-| Function used to change the list scrolling from your program, so that the nth item of the list is displayed on top
 -}
-scrollToNthItem : msg -> String -> Int -> Config item msg -> Model -> List item -> Cmd msg
-scrollToNthItem msg id idx ((Config { itemHeight, itemView, customContainer }) as configValue) model items =
+scrollToNthItem :
+    { postScrollMessage : msg
+    , listHtmlId : String
+    , itemIndex : Int
+    , configValue : Config item msg
+    , items : List item
+    }
+    -> Cmd msg
+scrollToNthItem { postScrollMessage, listHtmlId, itemIndex, configValue, items } =
+    Dom.setViewportOf listHtmlId 0 (firstNItemsHeight itemIndex configValue items)
+        |> Task.attempt (\_ -> postScrollMessage)
+
+
+firstNItemsHeight : Int -> Config item msg -> List item -> Float
+firstNItemsHeight idx configValue items =
     let
         { totalHeight } =
-            case itemHeight of
-                Constant height ->
-                    computeElementsAndSizesForSimpleHeight configValue height 0 (List.take idx items)
-
-                Variable function ->
-                    computeElementsAndSizesForMultipleHeights configValue function 0 (List.take idx items)
+            computeElementsAndSizes configValue 0 (List.take idx items)
     in
-    Dom.setViewportOf id 0 (toFloat totalHeight)
-        |> Task.attempt (\_ -> msg)
+    toFloat totalHeight
 
 
 defaultContainer : List ( String, String ) -> List (Html msg) -> Html msg

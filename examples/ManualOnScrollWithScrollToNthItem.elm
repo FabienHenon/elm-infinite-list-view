@@ -52,12 +52,20 @@ update msg model =
         UserChangedScrollIndex string ->
             case String.toInt string of
                 Just idx ->
-                    ( model, IL.scrollToNthItem NoOp "myList" idx config model.infList model.content )
+                    ( model
+                    , IL.scrollToNthItem
+                        { postScrollMessage = NoOp
+                        , listHtmlId = "myList"
+                        , itemIndex = idx
+                        , configValue = config
+                        , items = model.content
+                        }
+                    )
 
                 Nothing ->
                     ( model, Cmd.none )
 
-        _ ->
+        NoOp ->
             ( model, Cmd.none )
 
 
