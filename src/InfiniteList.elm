@@ -6,6 +6,7 @@ module InfiniteList exposing
     , withOffset, withCustomContainer, withClass, withStyles, withId
     , updateScroll
     , Model, Config, ItemHeight
+    , scrollToNthItem
     )
 
 {-| Displays a virtual infinite list of items by only showing visible items on screen. This is very useful for
@@ -55,11 +56,13 @@ is computed using the `scrollTop` value from the scroll event.
 
 -}
 
+import Browser.Dom as Dom
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on)
 import Html.Lazy exposing (lazy3)
 import Json.Decode as JD
+import Task
 
 
 {-| Model of the infinite list module. You need to create a new one using `init` function.
@@ -410,6 +413,23 @@ lazyView ((Config { itemHeight, itemView, customContainer }) as configValue) (Mo
             ]
             (List.indexedMap (\idx item -> lazy3 itemView idx (elementsCountToSkip + idx) item) elementsToShow)
         ]
+
+
+{-| Function used to change the list scrolling from your program, so that the nth item of the list is displayed on top
+-}
+scrollToNthItem : msg -> String -> Int -> Config item msg -> Model -> List item -> Cmd msg
+scrollToNthItem msg id idx ((Config { itemHeight, itemView, customContainer }) as configValue) model items =
+    let
+        { totalHeight } =
+            case itemHeight of
+                Constant height ->
+                    computeElementsAndSizesForSimpleHeight configValue height 0 (List.take idx items)
+
+                Variable function ->
+                    computeElementsAndSizesForMultipleHeights configValue function 0 (List.take idx items)
+    in
+    Dom.setViewportOf id 0 (toFloat totalHeight)
+        |> Task.attempt (\_ -> msg)
 
 
 defaultContainer : List ( String, String ) -> List (Html msg) -> Html msg
