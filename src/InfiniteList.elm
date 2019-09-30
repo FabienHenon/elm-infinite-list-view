@@ -6,6 +6,7 @@ module InfiniteList exposing
     , withOffset, withCustomContainer, withClass, withStyles, withId
     , updateScroll
     , Model, Config, ItemHeight
+    , scrollToNthItem
     )
 
 {-| Displays a virtual infinite list of items by only showing visible items on screen. This is very useful for
@@ -55,11 +56,13 @@ is computed using the `scrollTop` value from the scroll event.
 
 -}
 
+import Browser.Dom as Dom
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on)
 import Html.Lazy exposing (lazy3)
 import Json.Decode as JD
+import Task
 
 
 {-| Model of the infinite list module. You need to create a new one using `init` function.
@@ -365,6 +368,7 @@ updateScroll value (Model model) =
             , style "overflow-y" "auto"
             , style "-webkit-overflow-scrolling" "touch"
             , InfiniteList.onScroll InfiniteListMsg
+            , id "myslist" -- set an HTML id if you want to use scrollToNthItem later
             ]
             [ InfiniteList.view config model.infiniteList list ]
 
@@ -383,15 +387,10 @@ type alias Calculation item =
 
 
 lazyView : Config item msg -> Model -> List item -> Html msg
-lazyView ((Config { itemHeight, itemView, customContainer }) as configValue) (Model scrollTop) items =
+lazyView ((Config { itemView, customContainer }) as configValue) (Model scrollTop) items =
     let
         { skipCount, elements, topMargin, totalHeight } =
-            case itemHeight of
-                Constant height ->
-                    computeElementsAndSizesForSimpleHeight configValue height scrollTop items
-
-                Variable function ->
-                    computeElementsAndSizesForMultipleHeights configValue function scrollTop items
+            computeElementsAndSizes configValue scrollTop items
 
         elementsCountToSkip =
             skipCount
@@ -410,6 +409,40 @@ lazyView ((Config { itemHeight, itemView, customContainer }) as configValue) (Mo
             ]
             (List.indexedMap (\idx item -> lazy3 itemView idx (elementsCountToSkip + idx) item) elementsToShow)
         ]
+
+
+computeElementsAndSizes : Config item msg -> Int -> List item -> Calculation item
+computeElementsAndSizes ((Config { itemHeight, itemView, customContainer }) as configValue) scrollTop items =
+    case itemHeight of
+        Constant height ->
+            computeElementsAndSizesForSimpleHeight configValue height scrollTop items
+
+        Variable function ->
+            computeElementsAndSizesForMultipleHeights configValue function scrollTop items
+
+
+{-| Function used to change the list scrolling from your program, so that the nth item of the list is displayed on top
+-}
+scrollToNthItem :
+    { postScrollMessage : msg
+    , listHtmlId : String
+    , itemIndex : Int
+    , configValue : Config item msg
+    , items : List item
+    }
+    -> Cmd msg
+scrollToNthItem { postScrollMessage, listHtmlId, itemIndex, configValue, items } =
+    Dom.setViewportOf listHtmlId 0 (firstNItemsHeight itemIndex configValue items)
+        |> Task.attempt (\_ -> postScrollMessage)
+
+
+firstNItemsHeight : Int -> Config item msg -> List item -> Float
+firstNItemsHeight idx configValue items =
+    let
+        { totalHeight } =
+            computeElementsAndSizes configValue 0 (List.take idx items)
+    in
+    toFloat totalHeight
 
 
 defaultContainer : List ( String, String ) -> List (Html msg) -> Html msg
