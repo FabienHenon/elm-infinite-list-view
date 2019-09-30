@@ -4,9 +4,8 @@ module InfiniteList exposing
     , onScroll
     , view
     , withOffset, withCustomContainer, withClass, withStyles, withId
-    , updateScroll
+    , updateScroll, scrollToNthItem
     , Model, Config, ItemHeight
-    , scrollToNthItem
     )
 
 {-| Displays a virtual infinite list of items by only showing visible items on screen. This is very useful for
@@ -47,7 +46,7 @@ is computed using the `scrollTop` value from the scroll event.
 
 # Advanced
 
-@docs updateScroll
+@docs updateScroll, scrollToNthItem
 
 
 # Types
