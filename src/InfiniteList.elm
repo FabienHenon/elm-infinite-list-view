@@ -547,7 +547,7 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight }) g
 
 decodeToModel : JD.Decoder Model
 decodeToModel =
-    JD.at [ "target", "scrollTop" ] JD.int |> JD.map Model
+    JD.at [ "target", "scrollTop" ] JD.float |> JD.map round |> JD.map Model
 
 
 decodeScroll : (Model -> msg) -> JD.Decoder msg
