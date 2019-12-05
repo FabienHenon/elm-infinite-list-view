@@ -3,7 +3,7 @@
     "name": "FabienHenon/elm-infinite-list-view",
     "summary": "Displays a virtual infinite list, only showing visible items",
     "license": "BSD-3-Clause",
-    "version": "3.1.0",
+    "version": "3.1.1",
     "exposed-modules": [
         "InfiniteList"
     ],
