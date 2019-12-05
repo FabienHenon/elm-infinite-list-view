@@ -67,7 +67,7 @@ import Task
 {-| Model of the infinite list module. You need to create a new one using `init` function.
 -}
 type Model
-    = Model Int
+    = Model Float
 
 
 {-| Configuration for your infinite list, describing the look and feel.
@@ -410,7 +410,7 @@ lazyView ((Config { itemView, customContainer }) as configValue) (Model scrollTo
         ]
 
 
-computeElementsAndSizes : Config item msg -> Int -> List item -> Calculation item
+computeElementsAndSizes : Config item msg -> Float -> List item -> Calculation item
 computeElementsAndSizes ((Config { itemHeight, itemView, customContainer }) as configValue) scrollTop items =
     case itemHeight of
         Constant height ->
@@ -478,14 +478,14 @@ addAttribute f value newAttributes =
 -- Computations
 
 
-computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Int -> List item -> Calculation item
+computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Float -> List item -> Calculation item
 computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight }) itemHeight scrollTop items =
     let
         elementsCountToShow =
             (offset * 2 + containerHeight) // itemHeight + 1
 
         elementsCountToSkip =
-            max 0 ((scrollTop - offset) // itemHeight)
+            max 0 (ceiling scrollTop - offset) // itemHeight
 
         elementsToShow =
             (List.drop elementsCountToSkip >> List.take elementsCountToShow) items
@@ -499,7 +499,7 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight }) item
     { skipCount = elementsCountToSkip, elements = elementsToShow, topMargin = topMargin, totalHeight = totalHeight }
 
 
-computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Int -> List item -> Calculation item
+computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Float -> List item -> Calculation item
 computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight }) getHeight scrollTop items =
     let
         updateComputations item calculatedTuple =
@@ -514,10 +514,10 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight }) g
                     currentHeight + height
             in
             -- If still below limit, we skip it
-            if newCurrentHeight <= (scrollTop - offset) then
+            if newCurrentHeight <= (ceiling scrollTop - offset) then
                 { calculatedTuple | idx = idx + 1, elementsCountToSkip = elementsCountToSkip + 1, topMargin = topMargin + height, currentHeight = newCurrentHeight }
 
-            else if currentHeight < (scrollTop + containerHeight + offset) then
+            else if currentHeight < (floor scrollTop + containerHeight + offset) then
                 { calculatedTuple | idx = idx + 1, elementsToShow = item :: elementsToShow, currentHeight = newCurrentHeight }
 
             else
@@ -547,7 +547,7 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight }) g
 
 decodeToModel : JD.Decoder Model
 decodeToModel =
-    JD.at [ "target", "scrollTop" ] JD.float |> JD.map round |> JD.map Model
+    JD.at [ "target", "scrollTop" ] JD.float |> JD.map Model
 
 
 decodeScroll : (Model -> msg) -> JD.Decoder msg
