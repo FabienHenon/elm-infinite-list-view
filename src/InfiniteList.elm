@@ -3,7 +3,7 @@ module InfiniteList exposing
     , config, withConstantHeight, withVariableHeight
     , onScroll
     , view
-    , withOffset, withCustomContainer, withClass, withStyles, withId
+    , withOffset, withCustomContainer, withClass, withStyles, withId, withKeepFirst
     , updateScroll, scrollToNthItem
     , Model, Config, ItemHeight
     )
@@ -87,6 +87,7 @@ type alias ConfigInternal item msg =
     , id : Maybe String
     , styles : List ( String, String )
     , class : Maybe String
+    , keepFirst : Int
     }
 
 
@@ -154,6 +155,7 @@ config conf =
         , styles = []
         , class = Nothing
         , id = Nothing
+        , keepFirst = 0
         }
 
 
@@ -273,6 +275,18 @@ withCustomContainer : (List ( String, String ) -> List (Html msg) -> Html msg) -
 withCustomContainer customContainer (Config value) =
     Config
         { value | customContainer = customContainer }
+
+
+{-| Specifies the number of elements on the top of the list to always render.
+
+This can be used if the first element is a header which is shown sticky for example.
+
+The default is 0, removing all items from the top when scrolling down.
+-}
+withKeepFirst : Int -> Config item msg -> Config item msg
+withKeepFirst keepFirst (Config value) =
+    Config
+        { value | keepFirst = keepFirst }
 
 
 {-| This function returns the `onScroll` attribute to be added to the attributes of
@@ -479,7 +493,7 @@ addAttribute f value newAttributes =
 
 
 computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Float -> List item -> Calculation item
-computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight }) itemHeight scrollTop items =
+computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight, keepFirst }) itemHeight scrollTop items =
     let
         elementsCountToShow =
             (offset * 2 + containerHeight) // itemHeight + 1
@@ -488,7 +502,8 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight }) item
             max 0 (ceiling scrollTop - offset) // itemHeight
 
         elementsToShow =
-            (List.drop elementsCountToSkip >> List.take elementsCountToShow) items
+            List.take keepFirst items
+                ++ (List.drop (keepFirst + elementsCountToSkip) >> List.take elementsCountToShow) items
 
         topMargin =
             elementsCountToSkip * itemHeight
@@ -500,7 +515,7 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight }) item
 
 
 computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Float -> List item -> Calculation item
-computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight }) getHeight scrollTop items =
+computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight, keepFirst }) getHeight scrollTop items =
     let
         updateComputations item calculatedTuple =
             let
@@ -513,8 +528,12 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight }) g
                 newCurrentHeight =
                     currentHeight + height
             in
+            -- If still below limit, but we need to keep the first x, we keep it
+            if newCurrentHeight <= (ceiling scrollTop - offset) && idx < keepFirst then
+                { calculatedTuple | idx = idx + 1, elementsToShow = item :: elementsToShow, currentHeight = newCurrentHeight }
+            
             -- If still below limit, we skip it
-            if newCurrentHeight <= (ceiling scrollTop - offset) then
+            else if newCurrentHeight <= (ceiling scrollTop - offset) then
                 { calculatedTuple | idx = idx + 1, elementsCountToSkip = elementsCountToSkip + 1, topMargin = topMargin + height, currentHeight = newCurrentHeight }
 
             else if currentHeight < (floor scrollTop + containerHeight + offset) then
