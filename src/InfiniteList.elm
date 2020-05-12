@@ -26,7 +26,7 @@ is computed using the `scrollTop` value from the scroll event.
 
 # Configuration
 
-@docs config, withConstantHeight, withVariableHeight
+@docs config, withConstantHeight, withVariableHeight, withKeepFirst
 
 
 # Scroll
