@@ -1,9 +1,9 @@
 module InfiniteList exposing
     ( init
-    , config, withConstantHeight, withVariableHeight
+    , config, withConstantHeight, withVariableHeight, withKeepFirst
     , onScroll
     , view
-    , withOffset, withCustomContainer, withClass, withStyles, withId, withKeepFirst
+    , withOffset, withCustomContainer, withClass, withStyles, withId
     , updateScroll, scrollToNthItem
     , Model, Config, ItemHeight
     )
@@ -282,6 +282,7 @@ withCustomContainer customContainer (Config value) =
 This can be used if the first element is a header which is shown sticky for example.
 
 The default is 0, removing all items from the top when scrolling down.
+
 -}
 withKeepFirst : Int -> Config item msg -> Config item msg
 withKeepFirst keepFirst (Config value) =
@@ -531,8 +532,8 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight, kee
             -- If still below limit, but we need to keep the first x, we keep it
             if newCurrentHeight <= (ceiling scrollTop - offset) && idx < keepFirst then
                 { calculatedTuple | idx = idx + 1, elementsToShow = item :: elementsToShow, currentHeight = newCurrentHeight }
-            
-            -- If still below limit, we skip it
+                -- If still below limit, we skip it
+
             else if newCurrentHeight <= (ceiling scrollTop - offset) then
                 { calculatedTuple | idx = idx + 1, elementsCountToSkip = elementsCountToSkip + 1, topMargin = topMargin + height, currentHeight = newCurrentHeight }
 
