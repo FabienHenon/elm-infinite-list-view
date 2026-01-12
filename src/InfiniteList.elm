@@ -6,6 +6,7 @@ module InfiniteList exposing
     , withOffset, withCustomContainer, withClass, withStyles, withId
     , updateScroll, scrollToNthItem
     , Model, Config, ItemHeight
+    , Container(..)
     )
 
 {-| Displays a virtual infinite list of items by only showing visible items on screen. This is very useful for
@@ -387,7 +388,11 @@ updateScroll value (Model model) =
             [ InfiniteList.view config model.infiniteList list ]
 
 -}
-view : Config item msg -> Model -> List item -> Html msg
+type Container a item
+    = MContainer { length : () -> Int, sub : Int -> Int -> Container a item, toList : () -> List item }
+
+
+view : Config item msg -> Model -> Container a item -> Html msg
 view configValue model list =
     lazy3 lazyView configValue model list
 
@@ -400,7 +405,7 @@ type alias Calculation item =
     }
 
 
-lazyView : Config item msg -> Model -> List item -> Html msg
+lazyView : Config item msg -> Model -> Container a item -> Html msg
 lazyView ((Config { itemView, customContainer }) as configValue) (Model scrollTop) items =
     let
         { skipCount, elements, topMargin, totalHeight } =
@@ -425,14 +430,20 @@ lazyView ((Config { itemView, customContainer }) as configValue) (Model scrollTo
         ]
 
 
-computeElementsAndSizes : Config item msg -> Float -> List item -> Calculation item
+computeElementsAndSizes : Config item msg -> Float -> Container a item -> Calculation item
 computeElementsAndSizes ((Config { itemHeight, itemView, customContainer }) as configValue) scrollTop items =
     case itemHeight of
         Constant height ->
             computeElementsAndSizesForSimpleHeight configValue height scrollTop items
 
         Variable function ->
-            computeElementsAndSizesForMultipleHeights configValue function scrollTop items
+            computeElementsAndSizesForMultipleHeights configValue
+                function
+                scrollTop
+                (case items of
+                    MContainer c ->
+                        c.toList ()
+                )
 
 
 {-| Function used to change the list scrolling from your program, so that the nth item of the list is displayed on top
@@ -442,7 +453,7 @@ scrollToNthItem :
     , listHtmlId : String
     , itemIndex : Int
     , configValue : Config item msg
-    , items : List item
+    , items : Container a item
     }
     -> Cmd msg
 scrollToNthItem { postScrollMessage, listHtmlId, itemIndex, configValue, items } =
@@ -450,11 +461,16 @@ scrollToNthItem { postScrollMessage, listHtmlId, itemIndex, configValue, items }
         |> Task.attempt (\_ -> postScrollMessage)
 
 
-firstNItemsHeight : Int -> Config item msg -> List item -> Float
+firstNItemsHeight : Int -> Config item msg -> Container a item -> Float
 firstNItemsHeight idx configValue items =
     let
         { totalHeight } =
-            computeElementsAndSizes configValue 0 (List.take idx items)
+            computeElementsAndSizes configValue
+                0
+                (case items of
+                    MContainer c ->
+                        c.sub 0 idx
+                )
     in
     toFloat totalHeight
 
@@ -493,7 +509,7 @@ addAttribute f value newAttributes =
 -- Computations
 
 
-computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Float -> List item -> Calculation item
+computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Float -> Container a item -> Calculation item
 computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight, keepFirst }) itemHeight scrollTop items =
     let
         elementsCountToShow =
@@ -503,14 +519,24 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight, keepFi
             max 0 (ceiling scrollTop - offset) // itemHeight
 
         elementsToShow =
-            List.take keepFirst items
-                ++ (List.drop (keepFirst + elementsCountToSkip) >> List.take elementsCountToShow) items
+            case items of
+                MContainer c ->
+                    (case c.sub 0 keepFirst of
+                        MContainer c2 ->
+                            c2.toList ()
+                    )
+                        ++ (case c.sub (keepFirst + elementsCountToSkip) (keepFirst + elementsCountToSkip + elementsCountToShow) of
+                                MContainer c2 ->
+                                    c2.toList ()
+                           )
 
         topMargin =
             elementsCountToSkip * itemHeight
 
         totalHeight =
-            List.length items * itemHeight
+            case items of
+                MContainer c ->
+                    c.length () * itemHeight
     in
     { skipCount = elementsCountToSkip, elements = elementsToShow, topMargin = topMargin, totalHeight = totalHeight }
 
