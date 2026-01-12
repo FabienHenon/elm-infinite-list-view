@@ -68,11 +68,6 @@ itemView idx listIdx item =
         [ text item ]
 
 
-createContainer : Array String -> IL.Container (Array String) String
-createContainer l =
-    IL.MContainer { length = \() -> Array.length l, sub = \a b -> Array.slice a b l |> createContainer, toList = \() -> Array.toList l }
-
-
 view : Model -> Html Msg
 view model =
     div
@@ -83,4 +78,4 @@ view model =
         , style "margin" "auto"
         , IL.onScroll InfListMsg
         ]
-        [ IL.view config model.infList (createContainer model.content) ]
+        [ IL.view config model.infList (IL.createContainerArray model.content) ]

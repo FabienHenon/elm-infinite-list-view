@@ -6,7 +6,7 @@ module InfiniteList exposing
     , withOffset, withCustomContainer, withClass, withStyles, withId
     , updateScroll, scrollToNthItem
     , Model, Config, ItemHeight
-    , Container(..)
+    , createContainerArray, createContainerList
     )
 
 {-| Displays a virtual infinite list of items by only showing visible items on screen. This is very useful for
@@ -56,6 +56,7 @@ is computed using the `scrollTop` value from the scroll event.
 
 -}
 
+import Array exposing (Array)
 import Browser.Dom as Dom
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
@@ -390,6 +391,16 @@ updateScroll value (Model model) =
 -}
 type Container a item
     = MContainer { length : () -> Int, sub : Int -> Int -> Container a item, toList : () -> List item }
+
+
+createContainerList : List item -> Container (List item) item
+createContainerList l =
+    MContainer { length = \() -> List.length l, sub = \a b -> List.take b l |> List.drop a |> createContainerList, toList = \() -> l }
+
+
+createContainerArray : Array item -> Container (Array item) item
+createContainerArray l =
+    MContainer { length = \() -> Array.length l, sub = \a b -> Array.slice a b l |> createContainerArray, toList = \() -> Array.toList l }
 
 
 view : Config item msg -> Model -> Container a item -> Html msg
