@@ -389,14 +389,14 @@ updateScroll value (Model model) =
             [ InfiniteList.view config model.infiniteList list ]
 
 -}
-type Container a item
-    = MContainer { length : () -> Int, sub : Int -> Int -> Container a item, toList : () -> List item }
+type Container item
+    = MContainer { length : () -> Int, sub : Int -> Int -> Container item, toList : () -> List item }
 
 
 view : Config item msg -> Model -> List item -> Html msg
 view configValue model list =
     let
-        createContainer : List item -> Container (List item) item
+        createContainer : List item -> Container item
         createContainer l =
             MContainer { length = \() -> List.length l, sub = \a b -> List.take b l |> List.drop a |> createContainer, toList = \() -> l }
     in
@@ -406,7 +406,7 @@ view configValue model list =
 viewArray : Config item msg -> Model -> Array item -> Html msg
 viewArray configValue model array =
     let
-        createContainer : Array item -> Container (Array item) item
+        createContainer : Array item -> Container item
         createContainer l =
             MContainer { length = \() -> Array.length l, sub = \a b -> Array.slice a b l |> createContainer, toList = \() -> Array.toList l }
     in
@@ -421,7 +421,7 @@ type alias Calculation item =
     }
 
 
-lazyView : Config item msg -> Model -> Container a item -> Html msg
+lazyView : Config item msg -> Model -> Container item -> Html msg
 lazyView ((Config { itemView, customContainer }) as configValue) (Model scrollTop) items =
     let
         { skipCount, elements, topMargin, totalHeight } =
@@ -446,7 +446,7 @@ lazyView ((Config { itemView, customContainer }) as configValue) (Model scrollTo
         ]
 
 
-computeElementsAndSizes : Config item msg -> Float -> Container a item -> Calculation item
+computeElementsAndSizes : Config item msg -> Float -> Container item -> Calculation item
 computeElementsAndSizes ((Config { itemHeight, itemView, customContainer }) as configValue) scrollTop items =
     case itemHeight of
         Constant height ->
@@ -469,7 +469,7 @@ scrollToNthItem :
     , listHtmlId : String
     , itemIndex : Int
     , configValue : Config item msg
-    , items : Container a item
+    , items : Container item
     }
     -> Cmd msg
 scrollToNthItem { postScrollMessage, listHtmlId, itemIndex, configValue, items } =
@@ -477,7 +477,7 @@ scrollToNthItem { postScrollMessage, listHtmlId, itemIndex, configValue, items }
         |> Task.attempt (\_ -> postScrollMessage)
 
 
-firstNItemsHeight : Int -> Config item msg -> Container a item -> Float
+firstNItemsHeight : Int -> Config item msg -> Container item -> Float
 firstNItemsHeight idx configValue items =
     let
         { totalHeight } =
@@ -525,7 +525,7 @@ addAttribute f value newAttributes =
 -- Computations
 
 
-computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Float -> Container a item -> Calculation item
+computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Float -> Container item -> Calculation item
 computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight, keepFirst }) itemHeight scrollTop items =
     let
         elementsCountToShow =
