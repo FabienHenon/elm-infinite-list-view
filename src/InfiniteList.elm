@@ -389,8 +389,21 @@ updateScroll value (Model model) =
             [ InfiniteList.view config model.infiniteList list ]
 
 -}
-type Container item
-    = MContainer { length : () -> Int, sub : Int -> Int -> Container item, toList : () -> List item }
+type alias Container item =
+    { length : () -> Int, toList : Int -> Int -> List item }
+
+
+listFromIndices : Int -> Int -> List a -> List a
+listFromIndices from to list =
+    list
+        |> List.drop from
+        |> (\l ->
+                if to < 0 then
+                    l
+
+                else
+                    List.take (to - from) l
+           )
 
 
 view : Config item msg -> Model -> List item -> Html msg
@@ -398,7 +411,7 @@ view configValue model list =
     let
         createContainer : List item -> Container item
         createContainer l =
-            MContainer { length = \() -> List.length l, sub = \a b -> List.take b l |> List.drop a |> createContainer, toList = \() -> l }
+            { length = \() -> List.length l, toList = \a b -> listFromIndices a b l }
     in
     lazy3 lazyView configValue model <| createContainer list
 
@@ -408,7 +421,7 @@ viewArray configValue model array =
     let
         createContainer : Array item -> Container item
         createContainer l =
-            MContainer { length = \() -> Array.length l, sub = \a b -> Array.slice a b l |> createContainer, toList = \() -> Array.toList l }
+            { length = \() -> Array.length l, toList = \a b -> Array.slice a b l |> Array.toList }
     in
     lazy3 lazyView configValue model <| createContainer array
 
@@ -457,8 +470,8 @@ computeElementsAndSizes ((Config { itemHeight, itemView, customContainer }) as c
                 function
                 scrollTop
                 (case items of
-                    MContainer c ->
-                        c.toList ()
+                    { length, toList } ->
+                        toList 0 -1
                 )
 
 
@@ -483,10 +496,7 @@ firstNItemsHeight idx configValue items =
         { totalHeight } =
             computeElementsAndSizes configValue
                 0
-                (case items of
-                    MContainer c ->
-                        c.sub 0 idx
-                )
+                items
     in
     toFloat totalHeight
 
@@ -536,23 +546,17 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight, keepFi
 
         elementsToShow =
             case items of
-                MContainer c ->
-                    (case c.sub 0 keepFirst of
-                        MContainer c2 ->
-                            c2.toList ()
-                    )
-                        ++ (case c.sub (keepFirst + elementsCountToSkip) (keepFirst + elementsCountToSkip + elementsCountToShow) of
-                                MContainer c2 ->
-                                    c2.toList ()
-                           )
+                { length, toList } ->
+                    toList 0 keepFirst
+                        ++ toList (keepFirst + elementsCountToSkip) (keepFirst + elementsCountToSkip + elementsCountToShow)
 
         topMargin =
             elementsCountToSkip * itemHeight
 
         totalHeight =
             case items of
-                MContainer c ->
-                    c.length () * itemHeight
+                { length, toList } ->
+                    length () * itemHeight
     in
     { skipCount = elementsCountToSkip, elements = elementsToShow, topMargin = topMargin, totalHeight = totalHeight }
 
