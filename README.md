@@ -103,7 +103,7 @@ And then, inside this element, you call the `view` function, passing it the `con
 It will render a placeholder `div` taking the height your entire list needs, and inside this element, it will render a container
 _(that you can customize with `withCustomContainer`)_ that will contain the currently visible items of your list.
 
-## View Array
+### View Array
 Similarly to `InfiniteList.view` there is `InfiniteList.viewArray` for content stored in an `Array`. When using a constant height this can have a better performance.
 
 ### Update
