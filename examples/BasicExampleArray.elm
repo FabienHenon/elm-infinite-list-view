@@ -78,4 +78,4 @@ view model =
         , style "margin" "auto"
         , IL.onScroll InfListMsg
         ]
-        [ IL.view config model.infList (IL.createContainerArray model.content) ]
+        [ IL.viewArray config model.infList model.content ]

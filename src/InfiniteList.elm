@@ -6,7 +6,7 @@ module InfiniteList exposing
     , withOffset, withCustomContainer, withClass, withStyles, withId
     , updateScroll, scrollToNthItem
     , Model, Config, ItemHeight
-    , createContainerArray, createContainerList
+    , viewArray
     )
 
 {-| Displays a virtual infinite list of items by only showing visible items on screen. This is very useful for
@@ -393,19 +393,24 @@ type Container a item
     = MContainer { length : () -> Int, sub : Int -> Int -> Container a item, toList : () -> List item }
 
 
-createContainerList : List item -> Container (List item) item
-createContainerList l =
-    MContainer { length = \() -> List.length l, sub = \a b -> List.take b l |> List.drop a |> createContainerList, toList = \() -> l }
-
-
-createContainerArray : Array item -> Container (Array item) item
-createContainerArray l =
-    MContainer { length = \() -> Array.length l, sub = \a b -> Array.slice a b l |> createContainerArray, toList = \() -> Array.toList l }
-
-
-view : Config item msg -> Model -> Container a item -> Html msg
+view : Config item msg -> Model -> List item -> Html msg
 view configValue model list =
-    lazy3 lazyView configValue model list
+    let
+        createContainer : List item -> Container (List item) item
+        createContainer l =
+            MContainer { length = \() -> List.length l, sub = \a b -> List.take b l |> List.drop a |> createContainer, toList = \() -> l }
+    in
+    lazy3 lazyView configValue model <| createContainer list
+
+
+viewArray : Config item msg -> Model -> Array item -> Html msg
+viewArray configValue model array =
+    let
+        createContainer : Array item -> Container (Array item) item
+        createContainer l =
+            MContainer { length = \() -> Array.length l, sub = \a b -> Array.slice a b l |> createContainer, toList = \() -> Array.toList l }
+    in
+    lazy3 lazyView configValue model <| createContainer array
 
 
 type alias Calculation item =
