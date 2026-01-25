@@ -469,10 +469,7 @@ computeElementsAndSizes ((Config { itemHeight, itemView, customContainer }) as c
             computeElementsAndSizesForMultipleHeights configValue
                 function
                 scrollTop
-                (case items of
-                    { length, toList } ->
-                        toList 0 -1
-                )
+                (items.toList 0 -1)
 
 
 {-| Function used to change the list scrolling from your program, so that the nth item of the list is displayed on top
@@ -545,18 +542,14 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight, keepFi
             max 0 (ceiling scrollTop - offset) // itemHeight
 
         elementsToShow =
-            case items of
-                { length, toList } ->
-                    toList 0 keepFirst
-                        ++ toList (keepFirst + elementsCountToSkip) (keepFirst + elementsCountToSkip + elementsCountToShow)
+            items.toList 0 keepFirst
+                ++ items.toList (keepFirst + elementsCountToSkip) (keepFirst + elementsCountToSkip + elementsCountToShow)
 
         topMargin =
             elementsCountToSkip * itemHeight
 
         totalHeight =
-            case items of
-                { length, toList } ->
-                    length () * itemHeight
+            items.length () * itemHeight
     in
     { skipCount = elementsCountToSkip, elements = elementsToShow, topMargin = topMargin, totalHeight = totalHeight }
 
