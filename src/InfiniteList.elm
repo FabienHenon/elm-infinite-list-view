@@ -394,6 +394,8 @@ updateScroll value (Model model) =
 
 -- type alias Iterator item =
 --     { next : () -> Maybe ( item, Iterator item ) }
+-- type alias Iterator item =
+--     () -> Maybe ( item, () -> Iterator item )
 
 
 type Iterator item
