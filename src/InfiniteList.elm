@@ -389,8 +389,49 @@ updateScroll value (Model model) =
             [ InfiniteList.view config model.infiniteList list ]
 
 -}
+
+
+
+-- type alias Iterator item =
+--     { next : () -> Maybe ( item, Iterator item ) }
+
+
+type Iterator item
+    = MkIter (Maybe ( item, () -> Iterator item ))
+
+
+iterator_foldl : (a -> b -> b) -> b -> Iterator a -> b
+iterator_foldl func acc iter =
+    case iter of
+        MkIter Nothing ->
+            acc
+
+        MkIter (Just ( x, xs )) ->
+            iterator_foldl func (func x acc) (xs ())
+
+
+listIter : List item -> Iterator item
+listIter l =
+    case l of
+        [] ->
+            MkIter Nothing
+
+        h :: t ->
+            MkIter (Just ( h, \_ -> listIter t ))
+
+
+arrayIter : Array item -> Iterator item
+arrayIter =
+    arrayIterIndexed 0
+
+
+arrayIterIndexed : Int -> Array item -> Iterator item
+arrayIterIndexed index l =
+    (Array.get index l |> Maybe.map (\a -> ( a, \_ -> arrayIterIndexed (index + 1) l ))) |> MkIter
+
+
 type alias Container item =
-    { length : () -> Int, toList : Int -> Int -> List item }
+    { length : () -> Int, toList : Int -> Int -> List item, iter : Iterator item }
 
 
 listFromIndices : Int -> Int -> List a -> List a
@@ -411,7 +452,7 @@ view configValue model list =
     let
         createContainer : List item -> Container item
         createContainer l =
-            { length = \() -> List.length l, toList = \a b -> listFromIndices a b l }
+            { length = \() -> List.length l, toList = \a b -> listFromIndices a b l, iter = listIter l }
     in
     lazy3 lazyView configValue model <| createContainer list
 
@@ -421,7 +462,7 @@ viewArray configValue model array =
     let
         createContainer : Array item -> Container item
         createContainer l =
-            { length = \() -> Array.length l, toList = \a b -> Array.slice a b l |> Array.toList }
+            { length = \() -> Array.length l, toList = \a b -> Array.slice a b l |> Array.toList, iter = arrayIter l }
     in
     lazy3 lazyView configValue model <| createContainer array
 
@@ -469,7 +510,7 @@ computeElementsAndSizes ((Config { itemHeight, itemView, customContainer }) as c
             computeElementsAndSizesForMultipleHeights configValue
                 function
                 scrollTop
-                (items.toList 0 -1)
+                items
 
 
 {-| Function used to change the list scrolling from your program, so that the nth item of the list is displayed on top
@@ -554,7 +595,7 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight, keepFi
     { skipCount = elementsCountToSkip, elements = elementsToShow, topMargin = topMargin, totalHeight = totalHeight }
 
 
-computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Float -> List item -> Calculation item
+computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Float -> Container item -> Calculation item
 computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight, keepFirst }) getHeight scrollTop items =
     let
         updateComputations item calculatedTuple =
@@ -591,7 +632,7 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight, kee
             }
 
         computedValues =
-            List.foldl updateComputations initialValue items
+            iterator_foldl updateComputations initialValue items.iter
     in
     { skipCount = computedValues.elementsCountToSkip
     , elements = List.reverse computedValues.elementsToShow

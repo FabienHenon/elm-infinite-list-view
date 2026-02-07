@@ -29,7 +29,7 @@ main =
 initModel : Model
 initModel =
     { infList = IL.init
-    , content = Array.initialize 1000 String.fromInt
+    , content = Array.initialize 1000000 String.fromInt
     }
 
 
