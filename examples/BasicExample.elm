@@ -28,7 +28,7 @@ main =
 initModel : Model
 initModel =
     { infList = IL.init
-    , content = List.range 0 1000000 |> List.map String.fromInt
+    , content = List.range 0 1000 |> List.map String.fromInt
     }
 
 
