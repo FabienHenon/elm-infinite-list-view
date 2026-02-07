@@ -423,23 +423,14 @@ listIter l =
             Next ( h, \_ -> listIter t )
 
 
-arrayIter : Array item -> Iterator item
-arrayIter =
-    arrayIterIndexed 0
-
-
-arrayIterIndexed : Int -> Array item -> Iterator item
-arrayIterIndexed index l =
-    let
-        g =
-            Array.get index l
-    in
-    case g of
+arrayIter : Int -> Array item -> Iterator item
+arrayIter index l =
+    case Array.get index l of
         Nothing ->
             Done
 
         Just a ->
-            Next ( a, \_ -> arrayIterIndexed (index + 1) l )
+            Next ( a, \_ -> arrayIter (index + 1) l )
 
 
 type alias Container item =
@@ -474,7 +465,7 @@ viewArray configValue model array =
     let
         createContainer : Array item -> Container item
         createContainer l =
-            { length = \() -> Array.length l, toList = \a b -> Array.slice a b l |> Array.toList, iter = arrayIter l }
+            { length = \() -> Array.length l, toList = \a b -> Array.slice a b l |> Array.toList, iter = arrayIter 0 l }
     in
     lazy3 lazyView configValue model <| createContainer array
 
