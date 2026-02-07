@@ -399,16 +399,17 @@ updateScroll value (Model model) =
 
 
 type Iterator item
-    = MkIter (Maybe ( item, () -> Iterator item ))
+    = Done
+    | Next ( item, () -> Iterator item )
 
 
 iterator_foldl : (a -> b -> b) -> b -> Iterator a -> b
 iterator_foldl func acc iter =
     case iter of
-        MkIter Nothing ->
+        Done ->
             acc
 
-        MkIter (Just ( x, xs )) ->
+        Next ( x, xs ) ->
             iterator_foldl func (func x acc) (xs ())
 
 
@@ -416,10 +417,10 @@ listIter : List item -> Iterator item
 listIter l =
     case l of
         [] ->
-            MkIter Nothing
+            Done
 
         h :: t ->
-            MkIter (Just ( h, \_ -> listIter t ))
+            Next ( h, \_ -> listIter t )
 
 
 arrayIter : Array item -> Iterator item
@@ -429,7 +430,16 @@ arrayIter =
 
 arrayIterIndexed : Int -> Array item -> Iterator item
 arrayIterIndexed index l =
-    (Array.get index l |> Maybe.map (\a -> ( a, \_ -> arrayIterIndexed (index + 1) l ))) |> MkIter
+    let
+        g =
+            Array.get index l
+    in
+    case g of
+        Nothing ->
+            Done
+
+        Just a ->
+            Next ( a, \_ -> arrayIterIndexed (index + 1) l )
 
 
 type alias Container item =
