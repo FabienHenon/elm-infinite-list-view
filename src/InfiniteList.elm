@@ -2,11 +2,10 @@ module InfiniteList exposing
     ( init
     , config, withConstantHeight, withVariableHeight, withKeepFirst
     , onScroll
-    , view
+    , view, viewArray
     , withOffset, withCustomContainer, withClass, withStyles, withId
     , updateScroll, scrollToNthItem
     , Model, Config, ItemHeight
-    , viewArray
     )
 
 {-| Displays a virtual infinite list of items by only showing visible items on screen. This is very useful for
@@ -37,7 +36,7 @@ is computed using the `scrollTop` value from the scroll event.
 
 # View
 
-@docs view
+@docs view, viewArray
 
 
 # Customization
@@ -356,42 +355,6 @@ updateScroll value (Model model) =
 
 
 
--- View
-
-
-{-| Function used to display your long list
-
-**The element's height must be explicitly set, otherwise scroll event won't be triggered**
-
-    config : InfiniteList.Config String Msg
-    config =
-        InfiniteList.config
-            { itemView = itemView
-            , itemHeight = InfiniteList.withConstantHeight 20
-            , containerHeight = 300
-            }
-
-    itemView : Int -> Int -> String -> Html Msg
-    itemView idx listIdx item =
-        div [] [ text item ]
-
-    view : Model -> Html Msg
-    view model =
-        div
-            [ style "width" "100%"
-            , style "height" "100%"
-            , style "overflow-x" "hidden"
-            , style "overflow-y" "auto"
-            , style "-webkit-overflow-scrolling" "touch"
-            , InfiniteList.onScroll InfiniteListMsg
-            , id "myslist" -- set an HTML id if you want to use scrollToNthItem later
-            ]
-            [ InfiniteList.view config model.infiniteList list ]
-
--}
-
-
-
 -- type alias Iterator item =
 --     { next : () -> Maybe ( item, Iterator item ) }
 -- type alias Iterator item =
@@ -450,6 +413,40 @@ listFromIndices from to list =
            )
 
 
+
+-- View
+
+
+{-| Function used to display your long list
+
+**The element's height must be explicitly set, otherwise scroll event won't be triggered**
+
+    config : InfiniteList.Config String Msg
+    config =
+        InfiniteList.config
+            { itemView = itemView
+            , itemHeight = InfiniteList.withConstantHeight 20
+            , containerHeight = 300
+            }
+
+    itemView : Int -> Int -> String -> Html Msg
+    itemView idx listIdx item =
+        div [] [ text item ]
+
+    view : Model -> Html Msg
+    view model =
+        div
+            [ style "width" "100%"
+            , style "height" "100%"
+            , style "overflow-x" "hidden"
+            , style "overflow-y" "auto"
+            , style "-webkit-overflow-scrolling" "touch"
+            , InfiniteList.onScroll InfiniteListMsg
+            , id "myslist" -- set an HTML id if you want to use scrollToNthItem later
+            ]
+            [ InfiniteList.view config model.infiniteList list ]
+
+-}
 view : Config item msg -> Model -> List item -> Html msg
 view configValue model list =
     let
@@ -460,6 +457,40 @@ view configValue model list =
     lazy3 lazyView configValue model <| createContainer list
 
 
+
+-- ViewArray
+
+
+{-| Function used to display your long array
+
+**The element's height must be explicitly set, otherwise scroll event won't be triggered**
+
+    config : InfiniteList.Config String Msg
+    config =
+        InfiniteList.config
+            { itemView = itemView
+            , itemHeight = InfiniteList.withConstantHeight 20
+            , containerHeight = 300
+            }
+
+    itemView : Int -> Int -> String -> Html Msg
+    itemView idx listIdx item =
+        div [] [ text item ]
+
+    view : Model -> Html Msg
+    view model =
+        div
+            [ style "width" "100%"
+            , style "height" "100%"
+            , style "overflow-x" "hidden"
+            , style "overflow-y" "auto"
+            , style "-webkit-overflow-scrolling" "touch"
+            , InfiniteList.onScroll InfiniteListMsg
+            , id "myslist" -- set an HTML id if you want to use scrollToNthItem later
+            ]
+            [ InfiniteList.viewArray config model.infiniteList array ]
+
+-}
 viewArray : Config item msg -> Model -> Array item -> Html msg
 viewArray configValue model array =
     let
