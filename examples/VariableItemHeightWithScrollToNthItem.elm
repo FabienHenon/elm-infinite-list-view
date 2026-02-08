@@ -1,4 +1,4 @@
-module VariableItemHeight exposing (main)
+module VariableItemHeightWithScrollToNthItem exposing (main)
 
 import Browser
 import Html exposing (Html, div, input, label, text)

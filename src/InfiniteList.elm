@@ -1,11 +1,12 @@
 module InfiniteList exposing
     ( init
-    , config, withConstantHeight, withVariableHeight
+    , config, withConstantHeight, withVariableHeight, withKeepFirst
     , onScroll
     , view
-    , withOffset, withCustomContainer, withClass, withStyles, withId, withKeepFirst
+    , withOffset, withCustomContainer, withClass, withStyles, withId
     , updateScroll, scrollToNthItem
     , Model, Config, ItemHeight
+    , viewArray
     )
 
 {-| Displays a virtual infinite list of items by only showing visible items on screen. This is very useful for
@@ -55,6 +56,7 @@ is computed using the `scrollTop` value from the scroll event.
 
 -}
 
+import Array exposing (Array)
 import Browser.Dom as Dom
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
@@ -282,6 +284,7 @@ withCustomContainer customContainer (Config value) =
 This can be used if the first element is a header which is shown sticky for example.
 
 The default is 0, removing all items from the top when scrolling down.
+
 -}
 withKeepFirst : Int -> Config item msg -> Config item msg
 withKeepFirst keepFirst (Config value) =
@@ -386,9 +389,85 @@ updateScroll value (Model model) =
             [ InfiniteList.view config model.infiniteList list ]
 
 -}
+
+
+
+-- type alias Iterator item =
+--     { next : () -> Maybe ( item, Iterator item ) }
+-- type alias Iterator item =
+--     () -> Maybe ( item, () -> Iterator item )
+
+
+type Iterator item
+    = Done
+    | Next ( item, () -> Iterator item )
+
+
+iterator_foldl : (a -> b -> b) -> b -> Iterator a -> b
+iterator_foldl func acc iter =
+    case iter of
+        Done ->
+            acc
+
+        Next ( x, xs ) ->
+            iterator_foldl func (func x acc) (xs ())
+
+
+listIter : List item -> Iterator item
+listIter l =
+    case l of
+        [] ->
+            Done
+
+        h :: t ->
+            Next ( h, \_ -> listIter t )
+
+
+arrayIter : Int -> Array item -> Iterator item
+arrayIter index l =
+    case Array.get index l of
+        Nothing ->
+            Done
+
+        Just a ->
+            Next ( a, \_ -> arrayIter (index + 1) l )
+
+
+type alias Container item =
+    { length : () -> Int, toList : Int -> Int -> List item, iter : Iterator item }
+
+
+listFromIndices : Int -> Int -> List a -> List a
+listFromIndices from to list =
+    list
+        |> List.drop from
+        |> (\l ->
+                if to < 0 then
+                    l
+
+                else
+                    List.take (to - from) l
+           )
+
+
 view : Config item msg -> Model -> List item -> Html msg
 view configValue model list =
-    lazy3 lazyView configValue model list
+    let
+        createContainer : List item -> Container item
+        createContainer l =
+            { length = \() -> List.length l, toList = \a b -> listFromIndices a b l, iter = listIter l }
+    in
+    lazy3 lazyView configValue model <| createContainer list
+
+
+viewArray : Config item msg -> Model -> Array item -> Html msg
+viewArray configValue model array =
+    let
+        createContainer : Array item -> Container item
+        createContainer l =
+            { length = \() -> Array.length l, toList = \a b -> Array.slice a b l |> Array.toList, iter = arrayIter 0 l }
+    in
+    lazy3 lazyView configValue model <| createContainer array
 
 
 type alias Calculation item =
@@ -399,7 +478,7 @@ type alias Calculation item =
     }
 
 
-lazyView : Config item msg -> Model -> List item -> Html msg
+lazyView : Config item msg -> Model -> Container item -> Html msg
 lazyView ((Config { itemView, customContainer }) as configValue) (Model scrollTop) items =
     let
         { skipCount, elements, topMargin, totalHeight } =
@@ -424,14 +503,17 @@ lazyView ((Config { itemView, customContainer }) as configValue) (Model scrollTo
         ]
 
 
-computeElementsAndSizes : Config item msg -> Float -> List item -> Calculation item
+computeElementsAndSizes : Config item msg -> Float -> Container item -> Calculation item
 computeElementsAndSizes ((Config { itemHeight, itemView, customContainer }) as configValue) scrollTop items =
     case itemHeight of
         Constant height ->
             computeElementsAndSizesForSimpleHeight configValue height scrollTop items
 
         Variable function ->
-            computeElementsAndSizesForMultipleHeights configValue function scrollTop items
+            computeElementsAndSizesForMultipleHeights configValue
+                function
+                scrollTop
+                items
 
 
 {-| Function used to change the list scrolling from your program, so that the nth item of the list is displayed on top
@@ -453,7 +535,9 @@ firstNItemsHeight : Int -> Config item msg -> List item -> Float
 firstNItemsHeight idx configValue items =
     let
         { totalHeight } =
-            computeElementsAndSizes configValue 0 (List.take idx items)
+            computeElementsAndSizes configValue
+                0
+                { length = \() -> List.length items, toList = \a b -> listFromIndices a b items, iter = listIter items }
     in
     toFloat totalHeight
 
@@ -492,7 +576,7 @@ addAttribute f value newAttributes =
 -- Computations
 
 
-computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Float -> List item -> Calculation item
+computeElementsAndSizesForSimpleHeight : Config item msg -> Int -> Float -> Container item -> Calculation item
 computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight, keepFirst }) itemHeight scrollTop items =
     let
         elementsCountToShow =
@@ -502,19 +586,19 @@ computeElementsAndSizesForSimpleHeight (Config { offset, containerHeight, keepFi
             max 0 (ceiling scrollTop - offset) // itemHeight
 
         elementsToShow =
-            List.take keepFirst items
-                ++ (List.drop (keepFirst + elementsCountToSkip) >> List.take elementsCountToShow) items
+            items.toList 0 keepFirst
+                ++ items.toList (keepFirst + elementsCountToSkip) (keepFirst + elementsCountToSkip + elementsCountToShow)
 
         topMargin =
             elementsCountToSkip * itemHeight
 
         totalHeight =
-            List.length items * itemHeight
+            items.length () * itemHeight
     in
     { skipCount = elementsCountToSkip, elements = elementsToShow, topMargin = topMargin, totalHeight = totalHeight }
 
 
-computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Float -> List item -> Calculation item
+computeElementsAndSizesForMultipleHeights : Config item msg -> (Int -> item -> Int) -> Float -> Container item -> Calculation item
 computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight, keepFirst }) getHeight scrollTop items =
     let
         updateComputations item calculatedTuple =
@@ -531,8 +615,8 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight, kee
             -- If still below limit, but we need to keep the first x, we keep it
             if newCurrentHeight <= (ceiling scrollTop - offset) && idx < keepFirst then
                 { calculatedTuple | idx = idx + 1, elementsToShow = item :: elementsToShow, currentHeight = newCurrentHeight }
-            
-            -- If still below limit, we skip it
+                -- If still below limit, we skip it
+
             else if newCurrentHeight <= (ceiling scrollTop - offset) then
                 { calculatedTuple | idx = idx + 1, elementsCountToSkip = elementsCountToSkip + 1, topMargin = topMargin + height, currentHeight = newCurrentHeight }
 
@@ -551,7 +635,7 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight, kee
             }
 
         computedValues =
-            List.foldl updateComputations initialValue items
+            iterator_foldl updateComputations initialValue items.iter
     in
     { skipCount = computedValues.elementsCountToSkip
     , elements = List.reverse computedValues.elementsToShow
