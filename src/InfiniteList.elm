@@ -354,29 +354,22 @@ updateScroll value (Model model) =
             init
 
 
-
--- type alias Iterator item =
---     { next : () -> Maybe ( item, Iterator item ) }
--- type alias Iterator item =
---     () -> Maybe ( item, () -> Iterator item )
-
-
-type Iterator item
+type Iter item
     = Done
-    | Next ( item, () -> Iterator item )
+    | Next ( item, () -> Iter item )
 
 
-iterator_foldl : (a -> b -> b) -> b -> Iterator a -> b
-iterator_foldl func acc iter =
+iter_foldl : (a -> b -> b) -> b -> Iter a -> b
+iter_foldl func acc iter =
     case iter of
         Done ->
             acc
 
         Next ( x, xs ) ->
-            iterator_foldl func (func x acc) (xs ())
+            iter_foldl func (func x acc) (xs ())
 
 
-listIter : List item -> Iterator item
+listIter : List item -> Iter item
 listIter l =
     case l of
         [] ->
@@ -386,7 +379,7 @@ listIter l =
             Next ( h, \_ -> listIter t )
 
 
-arrayIter : Int -> Array item -> Iterator item
+arrayIter : Int -> Array item -> Iter item
 arrayIter index l =
     case Array.get index l of
         Nothing ->
@@ -397,7 +390,7 @@ arrayIter index l =
 
 
 type alias Container item =
-    { length : () -> Int, toList : Int -> Int -> List item, iter : Iterator item }
+    { length : () -> Int, toList : Int -> Int -> List item, iter : Iter item }
 
 
 listFromIndices : Int -> Int -> List a -> List a
@@ -663,7 +656,7 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight, kee
             }
 
         computedValues =
-            iterator_foldl updateComputations initialValue items.iter
+            iter_foldl updateComputations initialValue items.iter
     in
     { skipCount = computedValues.elementsCountToSkip
     , elements = List.reverse computedValues.elementsToShow
