@@ -444,11 +444,11 @@ listFromIndices from to list =
 view : Config item msg -> Model -> List item -> Html msg
 view configValue model list =
     let
-        createContainer : List item -> Container item
-        createContainer l =
-            { length = \() -> List.length l, toList = \a b -> listFromIndices a b l, iter = listIter l }
+        createContainer : Container item
+        createContainer =
+            { length = \() -> List.length list, toList = \from to -> listFromIndices from to list, iter = listIter list }
     in
-    lazy3 lazyView configValue model <| createContainer list
+    lazy3 lazyView configValue model createContainer
 
 
 
@@ -488,11 +488,11 @@ view configValue model list =
 viewArray : Config item msg -> Model -> Array item -> Html msg
 viewArray configValue model array =
     let
-        createContainer : Array item -> Container item
-        createContainer l =
-            { length = \() -> Array.length l, toList = \a b -> Array.slice a b l |> Array.toList, iter = arrayIter 0 l }
+        createContainer : Container item
+        createContainer =
+            { length = \() -> Array.length array, toList = \a b -> Array.slice a b array |> Array.toList, iter = arrayIter 0 array }
     in
-    lazy3 lazyView configValue model <| createContainer array
+    lazy3 lazyView configValue model createContainer
 
 
 type alias Calculation item =
