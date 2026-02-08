@@ -523,7 +523,7 @@ scrollToNthItem :
     , listHtmlId : String
     , itemIndex : Int
     , configValue : Config item msg
-    , items : Container item
+    , items : List item
     }
     -> Cmd msg
 scrollToNthItem { postScrollMessage, listHtmlId, itemIndex, configValue, items } =
@@ -531,13 +531,13 @@ scrollToNthItem { postScrollMessage, listHtmlId, itemIndex, configValue, items }
         |> Task.attempt (\_ -> postScrollMessage)
 
 
-firstNItemsHeight : Int -> Config item msg -> Container item -> Float
+firstNItemsHeight : Int -> Config item msg -> List item -> Float
 firstNItemsHeight idx configValue items =
     let
         { totalHeight } =
             computeElementsAndSizes configValue
                 0
-                items
+                { length = \() -> List.length items, toList = \a b -> listFromIndices a b items, iter = listIter items }
     in
     toFloat totalHeight
 
