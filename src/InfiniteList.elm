@@ -565,10 +565,13 @@ scrollToNthItem { postScrollMessage, listHtmlId, itemIndex, configValue, items }
 firstNItemsHeight : Int -> Config item msg -> List item -> Float
 firstNItemsHeight idx configValue items =
     let
+        l =
+            List.take idx items
+
         { totalHeight } =
             computeElementsAndSizes configValue
                 0
-                { length = \() -> List.length items, toList = \a b -> listFromIndices a b items, iter = listIter items }
+                { length = \() -> List.length l, toList = \a b -> listFromIndices a b l, iter = listIter l }
     in
     toFloat totalHeight
 
