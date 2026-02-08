@@ -356,7 +356,7 @@ updateScroll value (Model model) =
 
 type Iter item
     = Done
-    | Next ( item, () -> Iter item )
+    | Value ( item, () -> Iter item )
 
 
 iter_foldl : (a -> b -> b) -> b -> Iter a -> b
@@ -365,8 +365,22 @@ iter_foldl func acc iter =
         Done ->
             acc
 
-        Next ( x, xs ) ->
+        Value ( x, xs ) ->
             iter_foldl func (func x acc) (xs ())
+
+
+iter_take : Int -> Iter a -> Iter a
+iter_take n iter =
+    if n <= 0 then
+        Done
+
+    else
+        case iter of
+            Value ( x, next ) ->
+                Value ( x, \() -> iter_take (n - 1) (next ()) )
+
+            Done ->
+                Done
 
 
 listIter : List item -> Iter item
@@ -376,7 +390,7 @@ listIter l =
             Done
 
         h :: t ->
-            Next ( h, \_ -> listIter t )
+            Value ( h, \_ -> listIter t )
 
 
 arrayIter : Int -> Array item -> Iter item
@@ -386,7 +400,7 @@ arrayIter index l =
             Done
 
         Just a ->
-            Next ( a, \_ -> arrayIter (index + 1) l )
+            Value ( a, \_ -> arrayIter (index + 1) l )
 
 
 type alias Container item =
