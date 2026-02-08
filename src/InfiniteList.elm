@@ -404,13 +404,7 @@ listFromIndices : Int -> Int -> List a -> List a
 listFromIndices from to list =
     list
         |> List.drop from
-        |> (\l ->
-                if to < 0 then
-                    l
-
-                else
-                    List.take (to - from) l
-           )
+        |> List.take (to - from)
 
 
 
