@@ -354,63 +354,64 @@ updateScroll value (Model model) =
             init
 
 
-
--- type alias Iterator item =
---     { next : () -> Maybe ( item, Iterator item ) }
--- type alias Iterator item =
---     () -> Maybe ( item, () -> Iterator item )
-
-
-type Iterator item
+type Iter item
     = Done
-    | Next ( item, () -> Iterator item )
+    | Value ( item, () -> Iter item )
 
 
-iterator_foldl : (a -> b -> b) -> b -> Iterator a -> b
-iterator_foldl func acc iter =
+iter_foldl : (a -> b -> b) -> b -> Iter a -> b
+iter_foldl func acc iter =
     case iter of
         Done ->
             acc
 
-        Next ( x, xs ) ->
-            iterator_foldl func (func x acc) (xs ())
+        Value ( x, xs ) ->
+            iter_foldl func (func x acc) (xs ())
 
 
-listIter : List item -> Iterator item
+iter_take : Int -> Iter a -> Iter a
+iter_take n iter =
+    if n <= 0 then
+        Done
+
+    else
+        case iter of
+            Value ( x, next ) ->
+                Value ( x, \() -> iter_take (n - 1) (next ()) )
+
+            Done ->
+                Done
+
+
+listIter : List item -> Iter item
 listIter l =
     case l of
         [] ->
             Done
 
         h :: t ->
-            Next ( h, \_ -> listIter t )
+            Value ( h, \_ -> listIter t )
 
 
-arrayIter : Int -> Array item -> Iterator item
+arrayIter : Int -> Array item -> Iter item
 arrayIter index l =
     case Array.get index l of
         Nothing ->
             Done
 
         Just a ->
-            Next ( a, \_ -> arrayIter (index + 1) l )
+            Value ( a, \_ -> arrayIter (index + 1) l )
 
 
 type alias Container item =
-    { length : () -> Int, toList : Int -> Int -> List item, iter : Iterator item }
+    { length : () -> Int, toList : Int -> Int -> List item, iter : Iter item }
 
 
 listFromIndices : Int -> Int -> List a -> List a
 listFromIndices from to list =
     list
         |> List.drop from
-        |> (\l ->
-                if to < 0 then
-                    l
-
-                else
-                    List.take (to - from) l
-           )
+        |> List.take (to - from)
 
 
 
@@ -450,11 +451,11 @@ listFromIndices from to list =
 view : Config item msg -> Model -> List item -> Html msg
 view configValue model list =
     let
-        createContainer : List item -> Container item
-        createContainer l =
-            { length = \() -> List.length l, toList = \a b -> listFromIndices a b l, iter = listIter l }
+        createContainer : Container item
+        createContainer =
+            { length = \() -> List.length list, toList = \from to -> listFromIndices from to list, iter = listIter list }
     in
-    lazy3 lazyView configValue model <| createContainer list
+    lazy3 lazyView configValue model createContainer
 
 
 
@@ -494,11 +495,11 @@ view configValue model list =
 viewArray : Config item msg -> Model -> Array item -> Html msg
 viewArray configValue model array =
     let
-        createContainer : Array item -> Container item
-        createContainer l =
-            { length = \() -> Array.length l, toList = \a b -> Array.slice a b l |> Array.toList, iter = arrayIter 0 l }
+        createContainer : Container item
+        createContainer =
+            { length = \() -> Array.length array, toList = \a b -> Array.slice a b array |> Array.toList, iter = arrayIter 0 array }
     in
-    lazy3 lazyView configValue model <| createContainer array
+    lazy3 lazyView configValue model createContainer
 
 
 type alias Calculation item =
@@ -568,7 +569,7 @@ firstNItemsHeight idx configValue items =
         { totalHeight } =
             computeElementsAndSizes configValue
                 0
-                { length = \() -> List.length items, toList = \a b -> listFromIndices a b items, iter = listIter items }
+                { length = \() -> idx, toList = \a b -> listFromIndices a b items, iter = listIter items |> iter_take idx }
     in
     toFloat totalHeight
 
@@ -666,7 +667,7 @@ computeElementsAndSizesForMultipleHeights (Config { offset, containerHeight, kee
             }
 
         computedValues =
-            iterator_foldl updateComputations initialValue items.iter
+            iter_foldl updateComputations initialValue items.iter
     in
     { skipCount = computedValues.elementsCountToSkip
     , elements = List.reverse computedValues.elementsToShow
